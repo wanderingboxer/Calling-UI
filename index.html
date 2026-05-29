@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Call Campaign Manager</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem}
+.card{background:#fff;border-radius:12px;border:1px solid #e5e5e5;padding:1.5rem;width:100%;max-width:640px}
+h1{font-size:18px;font-weight:500;margin-bottom:4px;color:#111}
+.sub{font-size:13px;color:#888;margin-bottom:1.5rem}
+.steps{display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center}
+.step{display:flex;align-items:center;gap:6px;font-size:13px;color:#888}
+.step.active{color:#111;font-weight:500}
+.step-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;background:#eee;color:#888;border:1px solid #ddd;flex-shrink:0}
+.step.active .step-num{background:#111;color:#fff;border-color:#111}
+.step.done .step-num{background:#1a9e75;color:#fff;border-color:#1a9e75}
+.step.done{color:#1a9e75}
+.arrow{color:#ccc;font-size:13px}
+.dropzone{border:1.5px dashed #ccc;border-radius:10px;padding:3rem 2rem;text-align:center;cursor:pointer;transition:all .15s}
+.dropzone:hover,.dropzone.drag{border-color:#111;background:#fafafa}
+.dropzone h2{font-size:15px;font-weight:500;margin-bottom:4px;color:#111}
+.dropzone p{font-size:13px;color:#888;margin-bottom:8px}
+.dropzone small{font-size:12px;color:#aaa;line-height:1.5}
+.file-info{background:#f5f5f5;border-radius:8px;padding:10px 14px;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.file-info span{font-weight:500;color:#111}
+.file-info small{color:#888}
+table{width:100%;font-size:12px;border-collapse:collapse}
+th{padding:8px 12px;text-align:left;font-weight:500;color:#888;background:#f9f9f9;border-bottom:1px solid #eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+td{padding:8px 12px;color:#111;border-bottom:1px solid #f0f0f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:120px}
+.table-wrap{border:1px solid #eee;border-radius:8px;overflow:hidden;margin-bottom:1.5rem;overflow-x:auto}
+.table-more{padding:8px 12px;font-size:12px;color:#888;border-top:1px solid #eee;background:#fafafa}
+.agent-label{font-size:13px;font-weight:500;color:#111;margin-bottom:10px}
+.agents{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem}
+.agent{border:1px solid #eee;border-radius:8px;padding:14px;cursor:pointer;transition:all .15s}
+.agent:hover{border-color:#999;background:#fafafa}
+.agent.selected{border:2px solid #111;background:#fafafa}
+.agent h3{font-size:13px;font-weight:500;color:#111;margin-bottom:2px}
+.agent p{font-size:12px;color:#888}
+.btns{display:flex;gap:10px}
+button{padding:9px 16px;border-radius:8px;border:1px solid #ddd;background:#fff;color:#111;font-size:13px;cursor:pointer;transition:all .15s;font-family:inherit}
+button:hover{border-color:#999;background:#f9f9f9}
+button:disabled{opacity:.4;cursor:not-allowed}
+.btn-primary{background:#111;color:#fff;border-color:#111;flex:2}
+.btn-primary:hover:not(:disabled){background:#333}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem}
+.metric{background:#f5f5f5;border-radius:8px;padding:12px 14px}
+.metric label{font-size:12px;color:#888;display:block;margin-bottom:4px}
+.metric span{font-size:22px;font-weight:500;color:#111}
+.metric.green span{color:#1a9e75}
+.metric.red span{color:#e24b4a}
+.progress-bar-wrap{margin-bottom:1.5rem}
+.progress-bar-wrap .row{display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px;color:#888}
+.progress-bar-wrap .row strong{color:#111}
+.bar-bg{height:6px;background:#eee;border-radius:999px;overflow:hidden}
+.bar-fill{height:100%;background:#1a9e75;transition:width .3s;border-radius:999px}
+.contact-list{border:1px solid #eee;border-radius:8px;max-height:280px;overflow-y:auto;margin-bottom:1.5rem}
+.contact-row{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid #f0f0f0;font-size:13px}
+.contact-row:last-child{border-bottom:none}
+.contact-row.active{background:#fafafa}
+.badge{font-size:11px;font-weight:500;padding:2px 8px;border-radius:999px}
+.badge.pending{color:#888;background:#f0f0f0}
+.badge.calling{color:#bf7200;background:#fff3d6}
+.badge.triggered{color:#1a9e75;background:#e6f7f0}
+.badge.error{color:#e24b4a;background:#fdeaea}
+.results-note{background:#f5f5f5;border:1px solid #eee;border-radius:8px;padding:12px 14px;margin-bottom:1.5rem}
+.results-note h3{font-size:13px;font-weight:500;color:#111;margin-bottom:6px}
+.results-note p{font-size:13px;color:#888;margin-bottom:12px;line-height:1.5}
+.btn-fetch{background:#111;color:#fff;border-color:#111}
+.btn-fetch:hover:not(:disabled){background:#333}
+.btn-fetch.done{background:#1a9e75;border-color:#1a9e75}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Call campaign manager</h1>
+  <p class="sub">Upload a CSV, select an agent, trigger calls and download results</p>
+  <div class="steps" id="steps"></div>
+  <div id="app"></div>
+</div>
+
+<script>
+const TRIGGER = "/api/trigger";
+const RESULTS = "/api/results";
+const AGENTS = [
+  {id:"agent_8501keechvvge18vc9ajjd1y429e",name:"Harshita",region:"India"},
+  {id:"agent_1701ks7asqvafjx9kfj64cszgt3e",name:"Zara",region:"SEA"},
+  {id:"agent_7901krdhg074f289rv6tzzj3a6q1",name:"Maya",region:"US"},
+];
+
+let state = {
+  step:"upload", contacts:[], headers:[], agent:null,
+  fileName:"", progress:0, triggered:0, errors:0,
+  fetching:false, fetchDone:false, startTime:null
+};
+
+function parseCSV(txt) {
+  const lines = txt.trim().split("\n");
+  const headers = lines[0].split(",").map(h=>h.trim().replace(/^"|"$/g,""));
+  const contacts = lines.slice(1).map((line,i)=>{
+    const vals = line.split(",").map(v=>v.trim().replace(/^"|"$/g,""));
+    const obj = {_id:i,_status:"pending",_callStatus:"",_duration:"",_callSuccessful:""};
+    headers.forEach((h,j)=>{ obj[h]=vals[j]||""; });
+    return obj;
+  }).filter(r=>headers.some(h=>r[h]));
+  return {headers,contacts};
+}
+
+function toCSV() {
+  const extra = ["Call Status","Duration (secs)","Call Successful"];
+  const extraK = ["_callStatus","_duration","_callSuccessful"];
+  const allH = [...state.headers,...extra];
+  const allK = [...state.headers,...extraK];
+  const rows = state.contacts.map(c=>allK.map(k=>`"${(c[k]||"").toString().replace(/"/g,'""')}"`).join(","));
+  return [allH.join(","),...rows].join("\n");
+}
+
+function renderSteps() {
+  const names = ["Upload","Preview","Calling","Results"];
+  const keys = ["upload","preview","calling","results"];
+  const cur = keys.indexOf(state.step);
+  document.getElementById("steps").innerHTML = names.map((n,i)=>{
+    const cls = i===cur?"active":i<cur?"done":"";
+    const num = i<cur?"✓":(i+1);
+    return `<div class="step ${cls}"><div class="step-num">${num}</div>${n}</div>${i<3?'<span class="arrow">→</span>':""}`;
+  }).join("");
+}
+
+function renderUpload() {
+  return `<div class="dropzone" id="dz" onclick="document.getElementById('fi').click()">
+    <div style="font-size:32px;margin-bottom:12px">📄</div>
+    <h2>Drop your CSV file here</h2>
+    <p>or click to browse</p>
+    <small>Expected columns: First Name, Last Name, Number, Role, Company, Linkedin, Company Website, Region, Email</small>
+    <input type="file" id="fi" accept=".csv" style="display:none" onchange="onFile(this.files[0])">
+  </div>`;
+}
+
+function renderPreview() {
+  const dh = state.headers.slice(0,5);
+  const rows = state.contacts.slice(0,5).map(c=>`<tr>${dh.map(h=>`<td>${c[h]||""}</td>`).join("")}${state.headers.length>5?`<td>…</td>`:""}</tr>`).join("");
+  const more = state.contacts.length>5?`<div class="table-more">and ${state.contacts.length-5} more contacts</div>`:"";
+  const agents = AGENTS.map(a=>`<div class="agent${state.agent?.id===a.id?" selected":""}" onclick="selectAgent('${a.id}')"><h3>${a.name}</h3><p>${a.region}</p></div>`).join("");
+  return `
+    <div class="file-info"><span>📄 ${state.fileName}</span><small>${state.contacts.length} contacts</small></div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>${dh.map(h=>`<th>${h}</th>`).join("")}${state.headers.length>5?`<th>+${state.headers.length-5} more</th>`:""}</tr></thead>
+        <tbody>${rows}</tbody>
+      </table>${more}
+    </div>
+    <p class="agent-label">Select agent</p>
+    <div class="agents">${agents}</div>
+    <div class="btns">
+      <button onclick="setState('upload')">← Back</button>
+      <button class="btn-primary" onclick="startCalls()" ${!state.agent?"disabled":""}>
+        Start ${state.contacts.length} calls with ${state.agent?.name||"agent"} →
+      </button>
+    </div>`;
+}
+
+function renderCalling() {
+  const list = state.contacts.map((c,i)=>`
+    <div class="contact-row${c._status==="calling"?" active":""}">
+      <span>${c["First Name"]||c[state.headers[0]]||"Contact "+(i+1)} ${c["Last Name"]||""}</span>
+      <span class="badge ${c._status}">${{pending:"Pending",calling:"Calling…",triggered:"Triggered",error:"Error"}[c._status]||c._status}</span>
+    </div>`).join("");
+  return `
+    <div class="metrics">
+      <div class="metric"><label>Total</label><span>${state.contacts.length}</span></div>
+      <div class="metric green"><label>Triggered</label><span>${state.triggered}</span></div>
+      <div class="metric ${state.errors>0?"red":""}"><label>Errors</label><span>${state.errors}</span></div>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="row"><span>Progress</span><strong>${state.progress}%</strong></div>
+      <div class="bar-bg"><div class="bar-fill" style="width:${state.progress}%"></div></div>
+    </div>
+    <div class="contact-list">${list}</div>`;
+}
+
+function renderResults() {
+  const list = state.contacts.map((c,i)=>`
+    <div class="contact-row">
+      <div>
+        <span>${c["First Name"]||c[state.headers[0]]||"Contact "+(i+1)} ${c["Last Name"]||""}</span>
+        ${c._callStatus?`<small style="color:#888;margin-left:8px;font-size:11px">${c._callStatus}</small>`:""}
+      </div>
+      <span class="badge ${c._status}">${{pending:"Pending",calling:"Calling…",triggered:"Triggered",error:"Error"}[c._status]||c._status}</span>
+    </div>`).join("");
+  return `
+    <div class="metrics">
+      <div class="metric"><label>Total</label><span>${state.contacts.length}</span></div>
+      <div class="metric green"><label>Triggered</label><span>${state.contacts.filter(c=>c._status==="triggered").length}</span></div>
+      <div class="metric ${state.contacts.filter(c=>c._status==="error").length>0?"red":""}"><label>Errors</label><span>${state.contacts.filter(c=>c._status==="error").length}</span></div>
+    </div>
+    <div class="results-note">
+      <h3>Fetch call results</h3>
+      <p>Wait until all calls have finished and ElevenLabs has processed them (allow 2–3 minutes), then click below to pull results into your CSV.</p>
+      <button class="btn-fetch${state.fetchDone?" done":""}" onclick="fetchResults()" ${state.fetching?"disabled":""}>
+        ${state.fetching?"Fetching…":state.fetchDone?"✓ Results fetched":"Fetch results"}
+      </button>
+    </div>
+    <div class="contact-list">${list}</div>
+    <div class="btns" style="margin-top:1rem">
+      <button onclick="setState('upload')">New campaign</button>
+      <button class="btn-primary" onclick="downloadCSV()">Download results CSV</button>
+    </div>`;
+}
+
+function render() {
+  renderSteps();
+  const app = document.getElementById("app");
+  if(state.step==="upload") app.innerHTML = renderUpload();
+  else if(state.step==="preview") app.innerHTML = renderPreview();
+  else if(state.step==="calling") app.innerHTML = renderCalling();
+  else if(state.step==="results") app.innerHTML = renderResults();
+  bindDrop();
+}
+
+function bindDrop() {
+  const dz = document.getElementById("dz");
+  if(!dz) return;
+  dz.addEventListener("dragover",e=>{e.preventDefault();dz.classList.add("drag");});
+  dz.addEventListener("dragleave",()=>dz.classList.remove("drag"));
+  dz.addEventListener("drop",e=>{e.preventDefault();dz.classList.remove("drag");onFile(e.dataTransfer.files[0]);});
+}
+
+function onFile(file) {
+  if(!file||!file.name.endsWith(".csv")) return;
+  state.fileName = file.name;
+  const r = new FileReader();
+  r.onload = e => {
+    const {headers,contacts} = parseCSV(e.target.result);
+    state.headers = headers; state.contacts = contacts;
+    state.step = "preview"; render();
+  };
+  r.readAsText(file);
+}
+
+function selectAgent(id) {
+  state.agent = AGENTS.find(a=>a.id===id);
+  render();
+}
+
+function setState(s) {
+  state = {step:"upload",contacts:[],headers:[],agent:null,fileName:"",progress:0,triggered:0,errors:0,fetching:false,fetchDone:false,startTime:null};
+  render();
+}
+
+async function startCalls() {
+  if(!state.agent) return;
+  state.step = "calling"; state.progress=0; state.triggered=0; state.errors=0;
+  state.startTime = Math.floor(Date.now()/1000);
+  render();
+  const total = state.contacts.length;
+  for(let i=0;i<total;i++) {
+    state.contacts[i]._status = "calling"; render();
+    try {
+      await fetch(TRIGGER, {
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({contact:state.contacts[i],agentId:state.agent.id}),
+        signal:AbortSignal.timeout(10000)
+      });
+      state.contacts[i]._status = "triggered"; state.triggered++;
+    } catch {
+      state.contacts[i]._status = "error"; state.errors++;
+    }
+    state.progress = Math.round(((i+1)/total)*100);
+    render();
+    await new Promise(r=>setTimeout(r,350));
+  }
+  state.step = "results"; render();
+}
+
+async function fetchResults() {
+  state.fetching = true; render();
+  const numbers = state.contacts.map(c=>c["Number"]).filter(Boolean);
+  try {
+    const res = await fetch(RESULTS, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({agentId:state.agent.id,numbers,startTime:state.startTime}),
+      signal:AbortSignal.timeout(15000)
+    });
+    const data = await res.json();
+    state.contacts = state.contacts.map(c=>{
+      const r = data[c["Number"]];
+      if(r) return {...c,_callStatus:r.callStatus||"",_duration:(r.duration||"").toString(),_callSuccessful:r.callSuccessful||""};
+      return c;
+    });
+    state.fetchDone = true;
+  } catch(e) {
+    alert("Could not fetch results — make sure Workflow 2 is active and try again.\n\n"+e.message);
+  }
+  state.fetching = false; render();
+}
+
+function downloadCSV() {
+  const csv = toCSV();
+  const blob = new Blob([csv],{type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href=url; a.download=`results_${state.fileName}`; a.click();
+  URL.revokeObjectURL(url);
+}
+
+render();
+</script>
+</body>
+</html>
