@@ -108,8 +108,8 @@ function parseCSV(txt) {
 }
 
 function toCSV() {
-  const extra = ["Call Status","Duration (secs)","Call Successful"];
-  const extraK = ["_callStatus","_duration","_callSuccessful"];
+  const extra = ["Call Status","Meeting Interest","Meeting Date","Meeting Time","Pain Points","Duration (secs)"];
+  const extraK = ["_callStatus","_meetingInterest","_meetingDate","_meetingTime","_painPoints","_duration"];
   const allH = [...state.headers,...extra];
   const allK = [...state.headers,...extraK];
   const rows = state.contacts.map(c=>allK.map(k=>`"${(c[k]||"").toString().replace(/"/g,'""')}"`).join(","));
@@ -282,17 +282,26 @@ async function fetchResults() {
       method:"POST",
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({agentId:state.agent.id,numbers,startTime:state.startTime}),
-      signal:AbortSignal.timeout(15000)
+      signal:AbortSignal.timeout(30000)
     });
     const data = await res.json();
     state.contacts = state.contacts.map(c=>{
       const r = data[c["Number"]];
-      if(r) return {...c,_callStatus:r.callStatus||"",_duration:(r.duration||"").toString(),_callSuccessful:r.callSuccessful||""};
+      if(r) return {
+        ...c,
+        _callStatus: r.callStatus || "",
+        _meetingInterest: r.meetingInterest || "",
+        _meetingDate: r.meetingDate || "",
+        _meetingTime: r.meetingTime || "",
+        _painPoints: r.painPoints || "",
+        _duration: (r.duration || "").toString(),
+        _callSuccessful: r.callSuccessful || ""
+      };
       return c;
     });
     state.fetchDone = true;
   } catch(e) {
-    alert("Could not fetch results — make sure Workflow 2 is active and try again.\n\n"+e.message);
+    alert("Could not fetch results — try again in a few minutes.\n\n"+e.message);
   }
   state.fetching = false; render();
 }
