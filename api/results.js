@@ -22,7 +22,6 @@ export default async function handler(req, res) {
       cursor = data.next_cursor || null;
     }
 
-    // Debug — return raw data so we can see what ElevenLabs is returning
     const debug = [];
 
     await Promise.all(
@@ -34,13 +33,21 @@ export default async function handler(req, res) {
           );
           const detail = await detailRes.json();
 
+          // Log the full top level keys and phone_call section
           debug.push({
             conversation_id: convo.conversation_id,
-            call_successful: convo.call_successful,
-            user_id: detail.data?.user_id,
-            external_number: detail.data?.metadata?.phone_call?.external_number,
-            duration: detail.data?.metadata?.call_duration_secs,
-            call_status_value: detail.data?.analysis?.data_collection_results?.call_status?.value
+            topLevelKeys: Object.keys(detail),
+            hasData: !!detail.data,
+            dataKeys: detail.data ? Object.keys(detail.data) : [],
+            metadataKeys: detail.data?.metadata ? Object.keys(detail.data.metadata) : [],
+            phone_call: detail.data?.metadata?.phone_call || null,
+            user_id_locations: {
+              detail_user_id: detail.user_id,
+              detail_data_user_id: detail.data?.user_id,
+              metadata_user_id: detail.data?.metadata?.user_id,
+              convo_user_id: convo.user_id
+            },
+            rawDetailSample: JSON.stringify(detail).substring(0, 500)
           });
         } catch (e) {
           debug.push({ error: e.message });
@@ -51,9 +58,7 @@ export default async function handler(req, res) {
     res.status(200).json({
       debug,
       conversationsFound: allConversations.length,
-      startTime,
-      agentId,
-      numbersLookingFor: numbers
+      convoSample: allConversations[0]
     });
 
   } catch (err) {
