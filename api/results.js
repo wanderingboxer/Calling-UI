@@ -8,7 +8,6 @@ export default async function handler(req, res) {
   const apiKey = "sk_3bb5b4e2ee654a3299dbc159b74d8fea017a729d28bddbc4";
 
   try {
-    // Fetch all conversations for this agent since campaign started
     let allConversations = [];
     let cursor = null;
     let hasMore = true;
@@ -16,18 +15,13 @@ export default async function handler(req, res) {
     while (hasMore) {
       let url = `https://api.elevenlabs.io/v1/convai/conversations?agent_id=${agentId}&call_start_after_unix=${startTime}&page_size=100`;
       if (cursor) url += `&cursor=${cursor}`;
-
-      const response = await fetch(url, {
-        headers: { "xi-api-key": apiKey }
-      });
-
+      const response = await fetch(url, { headers: { "xi-api-key": apiKey } });
       const data = await response.json();
       allConversations = allConversations.concat(data.conversations || []);
       hasMore = data.has_more || false;
       cursor = data.next_cursor || null;
     }
 
-    // Fetch full details for each conversation
     const results = {};
 
     await Promise.all(
@@ -39,17 +33,22 @@ export default async function handler(req, res) {
           );
           const detail = await detailRes.json();
 
-          // Get phone number
+          // Try all possible locations for phone number
           const phone =
             detail.data?.metadata?.phone_call?.external_number ||
             detail.data?.user_id ||
+            detail.user_id ||
             "";
 
-          // Get data collection results
+          if (!phone) return;
+
           const dc = detail.data?.analysis?.data_collection_results || {};
 
-          results[phone] = {
-            callStatus: dc.call_status?.value || convo.call_successful === "failure" ? "no-answer" : "",
+          // Normalize phone — strip spaces, ensure + prefix
+          const normalizedPhone = phone.replace(/\s/g, "");
+
+          results[normalizedPhone] = {
+            callStatus: dc.call_status?.value || "",
             meetingInterest: dc.meeting_interest?.value || "",
             meetingDate: dc.meeting_date?.value || "",
             meetingTime: dc.meeting_time?.value || "",
