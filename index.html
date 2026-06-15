@@ -7,7 +7,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:2rem 1rem}
-.card{background:#fff;border-radius:12px;border:1px solid #e5e5e5;padding:1.5rem;width:100%;max-width:640px}
+.card{background:#fff;border-radius:12px;border:1px solid #e5e5e5;padding:1.5rem;width:100%;max-width:700px}
 h1{font-size:18px;font-weight:500;margin-bottom:4px;color:#111}
 .sub{font-size:13px;color:#888;margin-bottom:1.5rem}
 .steps{display:flex;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center}
@@ -18,11 +18,26 @@ h1{font-size:18px;font-weight:500;margin-bottom:4px;color:#111}
 .step.done .step-num{background:#1a9e75;color:#fff;border-color:#1a9e75}
 .step.done{color:#1a9e75}
 .arrow{color:#ccc;font-size:13px}
-.dropzone{border:1.5px dashed #ccc;border-radius:10px;padding:3rem 2rem;text-align:center;cursor:pointer;transition:all .15s}
+.dropzone{border:1.5px dashed #ccc;border-radius:10px;padding:2.5rem 2rem;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:1.5rem}
 .dropzone:hover,.dropzone.drag{border-color:#111;background:#fafafa}
 .dropzone h2{font-size:15px;font-weight:500;margin-bottom:4px;color:#111}
 .dropzone p{font-size:13px;color:#888;margin-bottom:8px}
-.dropzone small{font-size:12px;color:#aaa;line-height:1.5}
+.format-section{margin-bottom:1.5rem}
+.format-section h3{font-size:13px;font-weight:600;color:#111;margin-bottom:4px}
+.format-section p{font-size:12px;color:#888;margin-bottom:10px;line-height:1.5}
+.format-tabs{display:flex;gap:8px;margin-bottom:10px}
+.format-tab{padding:5px 12px;border-radius:6px;border:1px solid #ddd;background:#fff;font-size:12px;cursor:pointer;color:#888;transition:all .15s}
+.format-tab.active{background:#111;color:#fff;border-color:#111}
+.format-wrap{border:1px solid #eee;border-radius:8px;overflow:hidden}
+.format-table{width:100%;font-size:11px;border-collapse:collapse}
+.format-table th{padding:7px 10px;text-align:left;font-weight:600;color:#fff;background:#042C53;white-space:nowrap}
+.format-table td{padding:7px 10px;color:#111;border-bottom:1px solid #f0f0f0;white-space:nowrap;font-size:11px}
+.format-table tr:last-child td{border-bottom:none}
+.format-table tr:nth-child(even) td{background:#f9f9f9}
+.phone-note{background:#fff8e6;border:1px solid #ffe4a0;border-radius:6px;padding:8px 12px;font-size:12px;color:#7a5c00;margin-top:10px;line-height:1.5}
+.phone-note strong{font-weight:600}
+.download-sample{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:#042C53;text-decoration:none;border:1px solid #042C53;border-radius:6px;padding:5px 10px;margin-top:8px;cursor:pointer;background:#fff;transition:all .15s}
+.download-sample:hover{background:#042C53;color:#fff}
 .file-info{background:#f5f5f5;border-radius:8px;padding:10px 14px;margin-bottom:1rem;display:flex;justify-content:space-between;align-items:center;font-size:13px}
 .file-info span{font-weight:500;color:#111}
 .file-info small{color:#888}
@@ -79,7 +94,6 @@ button:disabled{opacity:.4;cursor:not-allowed}
   <div class="steps" id="steps"></div>
   <div id="app"></div>
 </div>
-
 <script>
 const TRIGGER = "/api/trigger";
 const RESULTS = "/api/results";
@@ -88,6 +102,36 @@ const AGENTS = [
   {id:"agent_1701ks7asqvafjx9kfj64cszgt3e",name:"Zara",region:"SEA"},
   {id:"agent_7901krdhg074f289rv6tzzj3a6q1",name:"Maya",region:"US"},
 ];
+
+const HARSHITA_SAMPLE = [
+  ["Honorific","First Name","Last Name","Number","Role","Company","Linkedin","Company Website","Region","Email"],
+  ["Mr.","Rajesh","Kumar","+919876543210","Head of Logistics","Tata Motors","https://linkedin.com/in/rajeshkumar","tatamotors.com","India","rajesh.kumar@tatamotors.com"],
+  ["Ms.","Priya","Sharma","+971501234567","Supply Chain Manager","Emirates Group","https://linkedin.com/in/priyasharma","emirates.com","UAE","priya.sharma@emirates.com"],
+  ["Mr.","Ahmed","Al-Rashid","+966512345678","VP Operations","Saudi Aramco","https://linkedin.com/in/ahmedalrashid","aramco.com","Saudi Arabia","ahmed.rashid@aramco.com"],
+];
+
+const ZARA_MAYA_SAMPLE = [
+  ["First Name","Last Name","Number","Role","Company","Linkedin","Company Website","Region","Email"],
+  ["Wei","Lim","+6591234567","Logistics Director","DHL Singapore","https://linkedin.com/in/weilim","dhl.com","Singapore","wei.lim@dhl.com"],
+  ["Sarah","Johnson","+12025551234","VP Supply Chain","Amazon","https://linkedin.com/in/sarahjohnson","amazon.com","United States","sarah.johnson@amazon.com"],
+  ["Nurul","Hafizah","+60123456789","Operations Manager","Petronas","https://linkedin.com/in/nurulhafizah","petronas.com","Malaysia","nurul.hafizah@petronas.com"],
+];
+
+let activeFormat = "harshita";
+
+function toCSVString(rows) {
+  return rows.map(r => r.map(c => `"${c}"`).join(",")).join("\n");
+}
+
+function downloadSample(type) {
+  const rows = type === "harshita" ? HARSHITA_SAMPLE : ZARA_MAYA_SAMPLE;
+  const name = type === "harshita" ? "harshita_sample.csv" : "zara_maya_sample.csv";
+  const blob = new Blob([toCSVString(rows)], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = name; a.click();
+  URL.revokeObjectURL(url);
+}
 
 let state = {
   step:"upload", contacts:[], headers:[], agent:null,
@@ -100,7 +144,7 @@ function parseCSV(txt) {
   const headers = lines[0].split(",").map(h=>h.trim().replace(/^"|"$/g,""));
   const contacts = lines.slice(1).map((line,i)=>{
     const vals = line.split(",").map(v=>v.trim().replace(/^"|"$/g,""));
-    const obj = {_id:i,_status:"pending",_callStatus:"",_duration:"",_callSuccessful:""};
+    const obj = {_id:i,_status:"pending",_callStatus:"",_duration:"",_callSuccessful:"",_meetingInterest:"",_meetingDate:"",_meetingTime:"",_painPoints:""};
     headers.forEach((h,j)=>{ obj[h]=vals[j]||""; });
     return obj;
   }).filter(r=>headers.some(h=>r[h]));
@@ -117,7 +161,6 @@ function toCSV() {
     {label:"Duration (secs)", key:"_duration"},
     {label:"Call Successful", key:"_callSuccessful"}
   ];
-
   const allH = [...state.headers, ...resultCols.map(c=>c.label)];
   const rows = state.contacts.map(c => {
     const origVals = state.headers.map(h => `"${(c[h]||"").toString().replace(/"/g,'""')}"`);
@@ -138,14 +181,52 @@ function renderSteps() {
   }).join("");
 }
 
+function switchFormat(type) {
+  activeFormat = type;
+  render();
+}
+
+function renderFormatSection() {
+  const isHarshita = activeFormat === "harshita";
+  const sample = isHarshita ? HARSHITA_SAMPLE : ZARA_MAYA_SAMPLE;
+  const headers = sample[0];
+  const rows = sample.slice(1);
+
+  return `
+    <div class="format-section">
+      <h3>CSV format guide</h3>
+      <p>Your CSV must match the format below exactly. Select the format based on which agent you are using.</p>
+      <div class="format-tabs">
+        <div class="format-tab ${isHarshita?"active":""}" onclick="switchFormat('harshita')">Harshita — India</div>
+        <div class="format-tab ${!isHarshita?"active":""}" onclick="switchFormat('zara_maya')">Zara — SEA &nbsp;/&nbsp; Maya — US</div>
+      </div>
+      <div class="format-wrap" style="overflow-x:auto">
+        <table class="format-table">
+          <thead><tr>${headers.map(h=>`<th>${h}</th>`).join("")}</tr></thead>
+          <tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join("")}</tr>`).join("")}</tbody>
+        </table>
+      </div>
+      <div class="phone-note">
+        <strong>Phone number format:</strong> Must include country code with a + prefix, no spaces, no brackets, no dashes.<br>
+        ✅ Correct: <strong>+919876543210</strong> &nbsp;&nbsp; ❌ Wrong: <strong>09876543210</strong> &nbsp; <strong>(+91) 98765-43210</strong> &nbsp; <strong>+91 98765 43210</strong>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <span class="download-sample" onclick="downloadSample('${isHarshita?"harshita":"zara_maya"}')">
+          ⬇ Download sample CSV
+        </span>
+      </div>
+    </div>`;
+}
+
 function renderUpload() {
-  return `<div class="dropzone" id="dz" onclick="document.getElementById('fi').click()">
-    <div style="font-size:32px;margin-bottom:12px">📄</div>
-    <h2>Drop your CSV file here</h2>
-    <p>or click to browse</p>
-    <small>Expected columns: First Name, Last Name, Number, Role, Company, Linkedin, Company Website, Region, Email</small>
-    <input type="file" id="fi" accept=".csv" style="display:none" onchange="onFile(this.files[0])">
-  </div>`;
+  return `
+    <div class="dropzone" id="dz" onclick="document.getElementById('fi').click()">
+      <div style="font-size:32px;margin-bottom:12px">📄</div>
+      <h2>Drop your CSV file here</h2>
+      <p>or click to browse</p>
+      <input type="file" id="fi" accept=".csv" style="display:none" onchange="onFile(this.files[0])">
+    </div>
+    ${renderFormatSection()}`;
 }
 
 function renderPreview() {
@@ -206,16 +287,16 @@ function renderResults() {
       <div class="metric ${state.contacts.filter(c=>c._status==="error").length>0?"red":""}"><label>Errors</label><span>${state.contacts.filter(c=>c._status==="error").length}</span></div>
     </div>
     <div class="results-note">
-      <h3>Fetch call results</h3>
-      <p>Wait until all calls have finished and ElevenLabs has processed them (allow 2–3 minutes), then click below to pull results into your CSV.</p>
+      <h3>Download call results</h3>
+      <p>Wait until all calls have finished and ElevenLabs has processed them — allow <strong>3–5 minutes</strong> after the last call completes — then fetch results and download your enriched CSV.</p>
       <button class="btn-fetch${state.fetchDone?" done":""}" onclick="fetchResults()" ${state.fetching?"disabled":""}>
-        ${state.fetching?"Fetching…":state.fetchDone?"✓ Results fetched":"Fetch results"}
+        ${state.fetching?"Fetching…":state.fetchDone?"✓ Results fetched — fetch again":"Fetch results"}
       </button>
     </div>
     <div class="contact-list">${list}</div>
     <div class="btns" style="margin-top:1rem">
       <button onclick="setState('upload')">New campaign</button>
-      <button class="btn-primary" onclick="downloadCSV()">Download results CSV</button>
+      <button class="btn-primary" onclick="downloadCSV()" ${!state.fetchDone?"disabled":""}>Download results CSV</button>
     </div>`;
 }
 
@@ -262,7 +343,7 @@ function setState(s) {
 async function startCalls() {
   if(!state.agent) return;
   state.step = "calling"; state.progress=0; state.triggered=0; state.errors=0;
-  state.startTime = Math.floor(Date.now()/1000);
+  state.startTime = Math.floor(Date.now()/1000) - 300;
   render();
   const total = state.contacts.length;
   for(let i=0;i<total;i++) {
@@ -331,7 +412,6 @@ async function fetchResults() {
     state.fetching = false;
     render();
     alert(`Results fetched. ${matched} of ${numbers.length} calls matched.`);
-
   } catch(e) {
     alert("Could not fetch results — wait 3-5 minutes after calls complete and try again.\n\n" + e.message);
     state.fetching = false; render();
