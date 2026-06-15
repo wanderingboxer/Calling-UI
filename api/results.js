@@ -22,7 +22,7 @@ export default async function handler(req, res) {
       cursor = data.next_cursor || null;
     }
 
-    const debug = [];
+    const results = {};
 
     await Promise.all(
       allConversations.map(async (convo) => {
@@ -33,33 +33,27 @@ export default async function handler(req, res) {
           );
           const detail = await detailRes.json();
 
-          // Log the full top level keys and phone_call section
-          debug.push({
-            conversation_id: convo.conversation_id,
-            topLevelKeys: Object.keys(detail),
-            hasData: !!detail.data,
-            dataKeys: detail.data ? Object.keys(detail.data) : [],
-            metadataKeys: detail.data?.metadata ? Object.keys(detail.data.metadata) : [],
-            phone_call: detail.data?.metadata?.phone_call || null,
-            user_id_locations: {
-              detail_user_id: detail.user_id,
-              detail_data_user_id: detail.data?.user_id,
-              metadata_user_id: detail.data?.metadata?.user_id,
-              convo_user_id: convo.user_id
-            },
-            rawDetailSample: JSON.stringify(detail).substring(0, 500)
-          });
-        } catch (e) {
-          debug.push({ error: e.message });
-        }
+          // Phone number is directly on detail, not under detail.data
+          const phone = (detail.user_id || "").replace(/\s/g, "");
+          if (!phone) return;
+
+          // Data collection results are directly on detail too
+          const dc = detail.analysis?.data_collection_results || {};
+
+          results[phone] = {
+            callStatus: dc.call_status?.value || (detail.metadata?.call_duration_secs === 0 ? "no-answer" : ""),
+            meetingInterest: dc.meeting_interest?.value || "",
+            meetingDate: dc.meeting_date?.value || "",
+            meetingTime: dc.meeting_time?.value || "",
+            painPoints: dc.pain_points?.value || "",
+            duration: detail.metadata?.call_duration_secs || 0,
+            callSuccessful: convo.call_successful || ""
+          };
+        } catch (e) {}
       })
     );
 
-    res.status(200).json({
-      debug,
-      conversationsFound: allConversations.length,
-      convoSample: allConversations[0]
-    });
+    res.status(200).json(results);
 
   } catch (err) {
     res.status(500).json({ error: err.message });
