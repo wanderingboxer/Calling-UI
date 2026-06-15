@@ -153,16 +153,17 @@ function parseCSV(txt) {
 
 function toCSV() {
   const resultCols = [
-    {label:"Call Status Result", key:"_callStatus"},
+    {label:"Call Status", key:"_callStatus"},
     {label:"Meeting Interest", key:"_meetingInterest"},
-    {label:"Meeting Date Result", key:"_meetingDate"},
-    {label:"Meeting Time Result", key:"_meetingTime"},
-    {label:"Pain Points Result", key:"_painPoints"},
+    {label:"Meeting Date", key:"_meetingDate"},
+    {label:"Meeting Time", key:"_meetingTime"},
+    {label:"Pain Points", key:"_painPoints"},
     {label:"Duration (secs)", key:"_duration"},
     {label:"Call Successful", key:"_callSuccessful"},
     {label:"Call Summary", key:"_callSummary"},
     {label:"Transcript", key:"_transcript"}
-  ];
+  ].filter(col => !state.headers.includes(col.label));
+
   const allH = [...state.headers, ...resultCols.map(c=>c.label)];
   const rows = state.contacts.map(c => {
     const origVals = state.headers.map(h => `"${(c[h]||"").toString().replace(/"/g,'""')}"`);
