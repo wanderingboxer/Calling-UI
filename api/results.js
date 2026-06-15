@@ -33,12 +33,16 @@ export default async function handler(req, res) {
           );
           const detail = await detailRes.json();
 
-          // Phone number is directly on detail, not under detail.data
           const phone = (detail.user_id || "").replace(/\s/g, "");
           if (!phone) return;
 
-          // Data collection results are directly on detail too
           const dc = detail.analysis?.data_collection_results || {};
+
+          // Build transcript as readable text
+          const transcriptText = (detail.transcript || [])
+            .filter(t => t.message && t.message.trim())
+            .map(t => `${t.role === "agent" ? "Agent" : "Prospect"}: ${t.message}`)
+            .join(" | ");
 
           results[phone] = {
             callStatus: dc.call_status?.value || (detail.metadata?.call_duration_secs === 0 ? "no-answer" : ""),
@@ -47,7 +51,9 @@ export default async function handler(req, res) {
             meetingTime: dc.meeting_time?.value || "",
             painPoints: dc.pain_points?.value || "",
             duration: detail.metadata?.call_duration_secs || 0,
-            callSuccessful: convo.call_successful || ""
+            callSuccessful: convo.call_successful || "",
+            callSummary: detail.analysis?.transcript_summary || "",
+            transcript: transcriptText
           };
         } catch (e) {}
       })
