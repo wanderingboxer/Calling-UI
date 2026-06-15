@@ -22,7 +22,8 @@ export default async function handler(req, res) {
       cursor = data.next_cursor || null;
     }
 
-    const results = {};
+    // Debug — return raw data so we can see what ElevenLabs is returning
+    const debug = [];
 
     await Promise.all(
       allConversations.map(async (convo) => {
@@ -33,34 +34,27 @@ export default async function handler(req, res) {
           );
           const detail = await detailRes.json();
 
-          // Try all possible locations for phone number
-          const phone =
-            detail.data?.metadata?.phone_call?.external_number ||
-            detail.data?.user_id ||
-            detail.user_id ||
-            "";
-
-          if (!phone) return;
-
-          const dc = detail.data?.analysis?.data_collection_results || {};
-
-          // Normalize phone — strip spaces, ensure + prefix
-          const normalizedPhone = phone.replace(/\s/g, "");
-
-          results[normalizedPhone] = {
-            callStatus: dc.call_status?.value || "",
-            meetingInterest: dc.meeting_interest?.value || "",
-            meetingDate: dc.meeting_date?.value || "",
-            meetingTime: dc.meeting_time?.value || "",
-            painPoints: dc.pain_points?.value || "",
-            duration: detail.data?.metadata?.call_duration_secs || 0,
-            callSuccessful: convo.call_successful || ""
-          };
-        } catch (e) {}
+          debug.push({
+            conversation_id: convo.conversation_id,
+            call_successful: convo.call_successful,
+            user_id: detail.data?.user_id,
+            external_number: detail.data?.metadata?.phone_call?.external_number,
+            duration: detail.data?.metadata?.call_duration_secs,
+            call_status_value: detail.data?.analysis?.data_collection_results?.call_status?.value
+          });
+        } catch (e) {
+          debug.push({ error: e.message });
+        }
       })
     );
 
-    res.status(200).json(results);
+    res.status(200).json({
+      debug,
+      conversationsFound: allConversations.length,
+      startTime,
+      agentId,
+      numbersLookingFor: numbers
+    });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
