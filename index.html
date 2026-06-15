@@ -159,7 +159,9 @@ function toCSV() {
     {label:"Meeting Time Result", key:"_meetingTime"},
     {label:"Pain Points Result", key:"_painPoints"},
     {label:"Duration (secs)", key:"_duration"},
-    {label:"Call Successful", key:"_callSuccessful"}
+    {label:"Call Successful", key:"_callSuccessful"},
+    {label:"Call Summary", key:"_callSummary"},
+    {label:"Transcript", key:"_transcript"}
   ];
   const allH = [...state.headers, ...resultCols.map(c=>c.label)];
   const rows = state.contacts.map(c => {
@@ -396,6 +398,8 @@ async function fetchResults() {
         c._painPoints = r.painPoints || "";
         c._duration = (r.duration || "0").toString();
         c._callSuccessful = r.callSuccessful || "";
+        c._callSummary = r.callSummary || "";
+        c._transcript = r.transcript || "";
         return c;
       }
       c._callStatus = "no-answer";
