@@ -108,15 +108,15 @@ function parseCSV(txt) {
 }
 
 function toCSV() {
-  // Only add result columns that don't already exist in original headers
   const resultCols = [
-    {label:"Call Status", key:"_callStatus"},
+    {label:"Call Status Result", key:"_callStatus"},
     {label:"Meeting Interest", key:"_meetingInterest"},
-    {label:"Meeting Date", key:"_meetingDate"},
-    {label:"Meeting Time", key:"_meetingTime"},
-    {label:"Pain Points", key:"_painPoints"},
-    {label:"Duration (secs)", key:"_duration"}
-  ].filter(col => !state.headers.includes(col.label));
+    {label:"Meeting Date Result", key:"_meetingDate"},
+    {label:"Meeting Time Result", key:"_meetingTime"},
+    {label:"Pain Points Result", key:"_painPoints"},
+    {label:"Duration (secs)", key:"_duration"},
+    {label:"Call Successful", key:"_callSuccessful"}
+  ];
 
   const allH = [...state.headers, ...resultCols.map(c=>c.label)];
   const rows = state.contacts.map(c => {
@@ -308,26 +308,34 @@ async function fetchResults() {
       const r = data[phone];
       if (r) {
         matched++;
-        return {
-          ...c,
-          _callStatus: r.callStatus || "",
-          _meetingInterest: r.meetingInterest || "",
-          _meetingDate: r.meetingDate || "",
-          _meetingTime: r.meetingTime || "",
-          _painPoints: r.painPoints || "",
-          _duration: (r.duration || "").toString(),
-          _callSuccessful: r.callSuccessful || ""
-        };
+        c._callStatus = r.callStatus || "";
+        c._meetingInterest = r.meetingInterest || "";
+        c._meetingDate = r.meetingDate || "";
+        c._meetingTime = r.meetingTime || "";
+        c._painPoints = r.painPoints || "";
+        c._duration = (r.duration || "0").toString();
+        c._callSuccessful = r.callSuccessful || "";
+        return c;
       }
-      return {...c, _callStatus:"no-answer", _meetingInterest:"", _meetingDate:"", _meetingTime:"", _painPoints:"", _duration:"0", _callSuccessful:"failure"};
+      c._callStatus = "no-answer";
+      c._meetingInterest = "";
+      c._meetingDate = "";
+      c._meetingTime = "";
+      c._painPoints = "";
+      c._duration = "0";
+      c._callSuccessful = "unknown";
+      return c;
     });
 
     state.fetchDone = true;
+    state.fetching = false;
+    render();
     alert(`Results fetched. ${matched} of ${numbers.length} calls matched.`);
+
   } catch(e) {
     alert("Could not fetch results — wait 3-5 minutes after calls complete and try again.\n\n" + e.message);
+    state.fetching = false; render();
   }
-  state.fetching = false; render();
 }
 
 function downloadCSV() {
