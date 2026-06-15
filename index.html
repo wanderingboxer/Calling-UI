@@ -108,12 +108,23 @@ function parseCSV(txt) {
 }
 
 function toCSV() {
-  const extra = ["Call Status","Meeting Interest","Meeting Date","Meeting Time","Pain Points","Duration (secs)"];
-  const extraK = ["_callStatus","_meetingInterest","_meetingDate","_meetingTime","_painPoints","_duration"];
-  const allH = [...state.headers,...extra];
-  const allK = [...state.headers,...extraK];
-  const rows = state.contacts.map(c=>allK.map(k=>`"${(c[k]||"").toString().replace(/"/g,'""')}"`).join(","));
-  return [allH.join(","),...rows].join("\n");
+  // Only add result columns that don't already exist in original headers
+  const resultCols = [
+    {label:"Call Status", key:"_callStatus"},
+    {label:"Meeting Interest", key:"_meetingInterest"},
+    {label:"Meeting Date", key:"_meetingDate"},
+    {label:"Meeting Time", key:"_meetingTime"},
+    {label:"Pain Points", key:"_painPoints"},
+    {label:"Duration (secs)", key:"_duration"}
+  ].filter(col => !state.headers.includes(col.label));
+
+  const allH = [...state.headers, ...resultCols.map(c=>c.label)];
+  const rows = state.contacts.map(c => {
+    const origVals = state.headers.map(h => `"${(c[h]||"").toString().replace(/"/g,'""')}"`);
+    const resultVals = resultCols.map(col => `"${(c[col.key]||"").toString().replace(/"/g,'""')}"`);
+    return [...origVals, ...resultVals].join(",");
+  });
+  return [allH.join(","), ...rows].join("\n");
 }
 
 function renderSteps() {
@@ -281,27 +292,40 @@ async function fetchResults() {
     const res = await fetch(RESULTS, {
       method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({agentId:state.agent.id,numbers,startTime:state.startTime}),
-      signal:AbortSignal.timeout(30000)
+      body:JSON.stringify({agentId:state.agent.id, numbers, startTime:state.startTime}),
+      signal:AbortSignal.timeout(60000)
     });
     const data = await res.json();
-    state.contacts = state.contacts.map(c=>{
-      const r = data[c["Number"]];
-      if(r) return {
-        ...c,
-        _callStatus: r.callStatus || "",
-        _meetingInterest: r.meetingInterest || "",
-        _meetingDate: r.meetingDate || "",
-        _meetingTime: r.meetingTime || "",
-        _painPoints: r.painPoints || "",
-        _duration: (r.duration || "").toString(),
-        _callSuccessful: r.callSuccessful || ""
-      };
-      return c;
+
+    if (data.error) {
+      alert("Error from results API: " + data.error);
+      state.fetching = false; render(); return;
+    }
+
+    let matched = 0;
+    state.contacts = state.contacts.map(c => {
+      const phone = (c["Number"] || "").replace(/\s/g, "");
+      const r = data[phone];
+      if (r) {
+        matched++;
+        return {
+          ...c,
+          _callStatus: r.callStatus || "",
+          _meetingInterest: r.meetingInterest || "",
+          _meetingDate: r.meetingDate || "",
+          _meetingTime: r.meetingTime || "",
+          _painPoints: r.painPoints || "",
+          _duration: (r.duration || "").toString(),
+          _callSuccessful: r.callSuccessful || ""
+        };
+      }
+      return {...c, _callStatus:"no-answer", _meetingInterest:"", _meetingDate:"", _meetingTime:"", _painPoints:"", _duration:"0", _callSuccessful:"failure"};
     });
+
     state.fetchDone = true;
+    alert(`Results fetched. ${matched} of ${numbers.length} calls matched.`);
   } catch(e) {
-    alert("Could not fetch results — try again in a few minutes.\n\n"+e.message);
+    alert("Could not fetch results — wait 3-5 minutes after calls complete and try again.\n\n" + e.message);
   }
   state.fetching = false; render();
 }
