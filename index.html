@@ -85,6 +85,15 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .btn-fetch{background:#111;color:#fff;border-color:#111}
 .btn-fetch:hover:not(:disabled){background:#333}
 .btn-fetch.done{background:#1a9e75;border-color:#1a9e75}
+.schedule-box{background:#f9f9f9;border:1px solid #eee;border-radius:8px;padding:14px;margin-bottom:1.5rem}
+.schedule-box p{font-size:13px;font-weight:500;color:#111;margin-bottom:8px}
+.schedule-box small{font-size:12px;color:#888}
+.scheduled-card{text-align:center;padding:2rem 0}
+.scheduled-card .icon{font-size:40px;margin-bottom:16px}
+.scheduled-card h2{font-size:16px;font-weight:500;color:#111;margin-bottom:8px}
+.scheduled-card .time{font-size:20px;font-weight:600;color:#111;margin:8px 0 16px}
+.scheduled-card .agent-info{font-size:12px;color:#aaa;margin-bottom:16px}
+.scheduled-card .warning{font-size:12px;color:#e24b4a;background:#fdeaea;border:1px solid #f5c6c6;border-radius:6px;padding:8px 12px;margin-bottom:24px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -97,6 +106,8 @@ button:disabled{opacity:.4;cursor:not-allowed}
 <script>
 const TRIGGER = "/api/trigger";
 const RESULTS = "/api/results";
+const SCHEDULE = "/api/schedule";
+
 const AGENTS = [
   {id:"agent_8501keechvvge18vc9ajjd1y429e",name:"Harshita",region:"India"},
   {id:"agent_1701ks7asqvafjx9kfj64cszgt3e",name:"Zara",region:"SEA"},
@@ -136,7 +147,8 @@ function downloadSample(type) {
 let state = {
   step:"upload", contacts:[], headers:[], agent:null,
   fileName:"", progress:0, triggered:0, errors:0,
-  fetching:false, fetchDone:false, startTime:null
+  fetching:false, fetchDone:false, startTime:null,
+  scheduledTime:null, scheduled:false
 };
 
 function parseCSV(txt) {
@@ -144,7 +156,7 @@ function parseCSV(txt) {
   const headers = lines[0].split(",").map(h=>h.trim().replace(/^"|"$/g,""));
   const contacts = lines.slice(1).map((line,i)=>{
     const vals = line.split(",").map(v=>v.trim().replace(/^"|"$/g,""));
-    const obj = {_id:i,_status:"pending",_callStatus:"",_duration:"",_callSuccessful:"",_meetingInterest:"",_meetingDate:"",_meetingTime:"",_painPoints:""};
+    const obj = {_id:i,_status:"pending",_callStatus:"",_duration:"",_callSuccessful:"",_meetingInterest:"",_meetingDate:"",_meetingTime:"",_painPoints:"",_callSummary:"",_transcript:""};
     headers.forEach((h,j)=>{ obj[h]=vals[j]||""; });
     return obj;
   }).filter(r=>headers.some(h=>r[h]));
@@ -174,8 +186,9 @@ function toCSV() {
 }
 
 function renderSteps() {
-  const names = ["Upload","Preview","Calling","Results"];
-  const keys = ["upload","preview","calling","results"];
+  const isScheduled = state.step === "scheduled";
+  const names = ["Upload","Preview", isScheduled ? "Scheduled" : "Calling","Results"];
+  const keys = ["upload","preview", isScheduled ? "scheduled" : "calling","results"];
   const cur = keys.indexOf(state.step);
   document.getElementById("steps").innerHTML = names.map((n,i)=>{
     const cls = i===cur?"active":i<cur?"done":"";
@@ -194,7 +207,6 @@ function renderFormatSection() {
   const sample = isHarshita ? HARSHITA_SAMPLE : ZARA_MAYA_SAMPLE;
   const headers = sample[0];
   const rows = sample.slice(1);
-
   return `
     <div class="format-section">
       <h3>CSV format guide</h3>
@@ -237,6 +249,11 @@ function renderPreview() {
   const rows = state.contacts.slice(0,5).map(c=>`<tr>${dh.map(h=>`<td>${c[h]||""}</td>`).join("")}${state.headers.length>5?`<td>…</td>`:""}</tr>`).join("");
   const more = state.contacts.length>5?`<div class="table-more">and ${state.contacts.length-5} more contacts</div>`:"";
   const agents = AGENTS.map(a=>`<div class="agent${state.agent?.id===a.id?" selected":""}" onclick="selectAgent('${a.id}')"><h3>${a.name}</h3><p>${a.region}</p></div>`).join("");
+
+  const startLabel = state.scheduledTime
+    ? "Schedule calls →"
+    : `Start ${state.contacts.length} calls with ${state.agent?.name||"agent"} →`;
+
   return `
     <div class="file-info"><span>📄 ${state.fileName}</span><small>${state.contacts.length} contacts</small></div>
     <div class="table-wrap">
@@ -247,11 +264,21 @@ function renderPreview() {
     </div>
     <p class="agent-label">Select agent</p>
     <div class="agents">${agents}</div>
+    <div class="schedule-box">
+      <p>Schedule calls <span style="font-size:12px;font-weight:400;color:#888">(optional — leave blank to start immediately)</span></p>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+        <input type="datetime-local" id="scheduleInput"
+          value="${state.scheduledTime||''}"
+          style="padding:8px 12px;border:1px solid #ddd;border-radius:8px;font-size:13px;font-family:inherit;color:#111"
+          onchange="state.scheduledTime=this.value;render()">
+        <span style="font-size:12px;color:#888">IST (India Standard Time)</span>
+        ${state.scheduledTime?`<span style="font-size:12px;color:#1a9e75;cursor:pointer" onclick="state.scheduledTime=null;render()">✕ Clear</span>`:""}
+      </div>
+      <small>If scheduling, the n8n server handles the timing — you can close this tab after scheduling.</small>
+    </div>
     <div class="btns">
       <button onclick="setState('upload')">← Back</button>
-      <button class="btn-primary" onclick="startCalls()" ${!state.agent?"disabled":""}>
-        Start ${state.contacts.length} calls with ${state.agent?.name||"agent"} →
-      </button>
+      <button class="btn-primary" onclick="handleStart()" ${!state.agent?"disabled":""}>${startLabel}</button>
     </div>`;
 }
 
@@ -272,6 +299,31 @@ function renderCalling() {
       <div class="bar-bg"><div class="bar-fill" style="width:${state.progress}%"></div></div>
     </div>
     <div class="contact-list">${list}</div>`;
+}
+
+function renderScheduled() {
+  const [datePart, timePart] = state.scheduledTime.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const displayTime = `${String(hour).padStart(2,"0")}:${String(minute).padStart(2,"0")} IST on ${day} ${months[month-1]} ${year}`;
+
+  return `
+    <div class="scheduled-card">
+      <div class="icon">⏰</div>
+      <h2>Calls scheduled successfully</h2>
+      <p style="font-size:13px;color:#888;margin-bottom:4px">${state.contacts.length} calls will be triggered at</p>
+      <div class="time">${displayTime}</div>
+      <div class="agent-info">Agent: ${state.agent.name} — ${state.agent.region}</div>
+      <div class="warning">
+        The calls are scheduled on the server and will trigger automatically at the set time.<br>
+        You can close this tab. Come back after the calls complete to fetch and download results.
+      </div>
+      <div class="btns" style="justify-content:center">
+        <button onclick="setState('upload')">New campaign</button>
+        <button class="btn-primary" style="flex:none" onclick="goToResults()">Go to results →</button>
+      </div>
+    </div>`;
 }
 
 function renderResults() {
@@ -309,6 +361,7 @@ function render() {
   if(state.step==="upload") app.innerHTML = renderUpload();
   else if(state.step==="preview") app.innerHTML = renderPreview();
   else if(state.step==="calling") app.innerHTML = renderCalling();
+  else if(state.step==="scheduled") app.innerHTML = renderScheduled();
   else if(state.step==="results") app.innerHTML = renderResults();
   bindDrop();
 }
@@ -339,8 +392,70 @@ function selectAgent(id) {
 }
 
 function setState(s) {
-  state = {step:"upload",contacts:[],headers:[],agent:null,fileName:"",progress:0,triggered:0,errors:0,fetching:false,fetchDone:false,startTime:null};
+  state = {step:"upload",contacts:[],headers:[],agent:null,fileName:"",progress:0,triggered:0,errors:0,fetching:false,fetchDone:false,startTime:null,scheduledTime:null,scheduled:false};
   render();
+}
+
+function goToResults() {
+  state.step = "results";
+  state.triggered = state.contacts.length;
+  state.contacts = state.contacts.map(c => ({...c, _status:"triggered"}));
+  render();
+}
+
+async function handleStart() {
+  if (!state.agent) return;
+  if (!state.scheduledTime) {
+    startCalls();
+    return;
+  }
+
+  // Parse the datetime-local value and treat as IST (UTC+5:30)
+  const [datePart, timePart] = state.scheduledTime.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+  const istOffsetMs = 5.5 * 60 * 60 * 1000;
+  const localDate = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  const utcDate = new Date(localDate.getTime() - istOffsetMs);
+  const scheduledUnix = Math.floor(utcDate.getTime() / 1000);
+  const now = Math.floor(Date.now() / 1000);
+
+  if (scheduledUnix <= now) {
+    alert("Scheduled time must be in the future.");
+    return;
+  }
+
+  const btn = document.querySelector(".btn-primary");
+  btn.disabled = true;
+  btn.textContent = "Scheduling...";
+
+  try {
+    const res = await fetch(SCHEDULE, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contacts: state.contacts,
+        agentId: state.agent.id,
+        scheduledTime: scheduledUnix
+      }),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (res.ok) {
+      state.startTime = scheduledUnix - 300;
+      state.step = "scheduled";
+      render();
+    } else {
+      const err = await res.text();
+      alert("Failed to schedule — please try again.\n\n" + err);
+      btn.disabled = false;
+      btn.textContent = "Schedule calls →";
+    }
+  } catch(e) {
+    alert("Could not reach scheduler: " + e.message);
+    btn.disabled = false;
+    btn.textContent = "Schedule calls →";
+  }
 }
 
 async function startCalls() {
@@ -403,13 +518,15 @@ async function fetchResults() {
         c._transcript = r.transcript || "";
         return c;
       }
-      c._callStatus = "no-answer";
+      c._callStatus = "";
       c._meetingInterest = "";
       c._meetingDate = "";
       c._meetingTime = "";
       c._painPoints = "";
-      c._duration = "0";
-      c._callSuccessful = "unknown";
+      c._duration = "";
+      c._callSuccessful = "";
+      c._callSummary = "";
+      c._transcript = "";
       return c;
     });
 
